@@ -9,13 +9,19 @@ APP_NAME="MacSweep"
 BUNDLE_ID="io.github.albarth84.macsweep"
 VERSION="${VERSION:-$(tr -d '[:space:]' < VERSION)}"
 BUILD_DIR="build"
-APP_DIR="$BUILD_DIR/$APP_NAME.app"
+mkdir -p "$BUILD_DIR"
+# Il bundle si assembla e si firma fuori dalla cartella del progetto: se il progetto è in una
+# cartella sincronizzata (iCloud Drive) il File Provider aggiunge attributi estesi dopo la firma
+# e il bundle non supera più `codesign --verify --strict`.
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+APP_DIR="$STAGE/$APP_NAME.app"
 
 echo "▸ Compilazione release (arm64 + x86_64)…"
 swift build -c release --arch arm64 --arch x86_64
 BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
 
-echo "▸ Creazione bundle $APP_DIR"
+echo "▸ Creazione bundle"
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$BIN_DIR/$APP_NAME" "$APP_DIR/Contents/MacOS/$APP_NAME"
@@ -67,6 +73,7 @@ fi
 echo "▸ Firma ($SIGN_IDENTITY)"
 xattr -cr "$APP_DIR"
 codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR"
+codesign --verify --strict --deep "$APP_DIR"
 
 if [[ " $* " == *" --zip "* ]]; then
     ZIP="$BUILD_DIR/$APP_NAME-$VERSION.zip"
@@ -80,10 +87,12 @@ if [[ " $* " == *" --dmg "* ]]; then
     echo "▸ Creazione $DMG"
     rm -f "$DMG"
     STAGING="$(mktemp -d)"
-    cp -R "$APP_DIR" "$STAGING/"
+    /usr/bin/ditto "$APP_DIR" "$STAGING/$APP_NAME.app"
     ln -s /Applications "$STAGING/Applications"
     hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
     rm -rf "$STAGING"
 fi
 
-echo "✓ Fatto: $APP_DIR"
+rm -rf "$BUILD_DIR/$APP_NAME.app"
+/usr/bin/ditto "$APP_DIR" "$BUILD_DIR/$APP_NAME.app"
+echo "✓ Fatto: $BUILD_DIR/$APP_NAME.app"
