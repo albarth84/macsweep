@@ -15,7 +15,7 @@ struct AppsView: View {
             }
             HStack(spacing: 14) {
                 appList
-                    .frame(minWidth: 260, idealWidth: 300, maxWidth: 380)
+                    .frame(minWidth: 320, idealWidth: 360, maxWidth: 440)
                     .card(padding: 0)
                 detail
                     .frame(minWidth: 460, maxWidth: .infinity)
@@ -37,33 +37,43 @@ struct AppsView: View {
 
     private var appList: some View {
         VStack(spacing: 0) {
-            HStack {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Cerca app", text: $model.searchText).textFieldStyle(.plain)
-            }
-            .padding(8)
-            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-            .padding(10)
-            List(model.filteredApps, selection: Binding(get: { model.selectedID }, set: { model.select($0) })) { app in
-                HStack(spacing: 10) {
-                    Image(nsImage: NSWorkspace.shared.icon(forFile: app.url.path))
-                        .resizable().frame(width: 28, height: 28)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(app.name).lineLimit(1)
-                        Text(app.version.isEmpty ? app.bundleID : "\(app.version) · \(app.bundleID)")
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer()
-                    if let size = model.sizes[app.id] {
-                        Text(Fmt.bytes(size)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Cerca app", text: $model.searchText).textFieldStyle(.plain)
+                }
+                .font(.body)
+                .padding(8)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+                Picker("Ordina", selection: $model.sortOrder) {
+                    ForEach(AppsModel.SortOrder.allCases) { order in
+                        Label(order.title, systemImage: order.symbol).tag(order)
                     }
                 }
-                .tag(app.id)
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+                .help("Ordina per nome o per dimensione")
+            }
+            .padding(10)
+            List(model.filteredApps, selection: Binding(get: { model.selectedID }, set: { model.select($0) })) { app in
+                AppRow(app: app, size: model.sizes[app.id], largest: model.largestSize,
+                       showBar: model.sortOrder == .size)
+                    .tag(app.id)
             }
             .scrollContentBackground(.hidden)
             .overlay { if model.isLoading { ProgressView() } }
             Divider()
-            Text("\(model.apps.count) app installate").font(.caption).foregroundStyle(.secondary).padding(6)
+            HStack {
+                Text("\(model.apps.count) app installate")
+                Spacer()
+                if model.sizes.count < model.apps.count && !model.apps.isEmpty {
+                    ProgressView().controlSize(.mini)
+                    Text("misura dimensioni…")
+                }
+            }
+            .font(.callout).foregroundStyle(.secondary)
+            .padding(.horizontal, 12).padding(.vertical, 8)
         }
     }
 
@@ -181,5 +191,43 @@ private struct LeftoverRow: View {
                 .buttonStyle(.borderless)
         }
         .help(item.url.path)
+    }
+}
+
+private struct AppRow: View {
+    let app: AppInfo
+    let size: Int64?
+    let largest: Int64
+    let showBar: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: app.url.path))
+                .resizable().frame(width: 38, height: 38)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(app.name)
+                    .font(.system(size: 15, weight: .medium))
+                    .lineLimit(1)
+                Text(app.version.isEmpty ? app.bundleID : "\(app.version) · \(app.bundleID)")
+                    .font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                if showBar, let size, largest > 0 {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.06))
+                            Capsule().fill(Theme.gradient(Theme.blue))
+                                .frame(width: max(3, geo.size.width * Double(size) / Double(largest)))
+                        }
+                    }
+                    .frame(height: 4)
+                }
+            }
+            Spacer(minLength: 6)
+            if let size {
+                Text(Fmt.bytes(size))
+                    .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }

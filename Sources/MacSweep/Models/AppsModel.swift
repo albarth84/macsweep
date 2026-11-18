@@ -16,12 +16,32 @@ final class AppsModel {
     var isRemoving = false
     var lastResult: DeletionResult?
 
+    enum SortOrder: String, CaseIterable, Identifiable {
+        case name, size
+        var id: String { rawValue }
+        var title: String { self == .name ? "Nome" : "Dimensione" }
+        var symbol: String { self == .name ? "textformat" : "arrow.down.circle" }
+    }
+
+    /// Ordinamento scelto, ricordato tra un avvio e l'altro.
+    var sortOrder: SortOrder = SortOrder(rawValue: UserDefaults.standard.string(forKey: "appsSortOrder") ?? "") ?? .name {
+        didSet { UserDefaults.standard.set(sortOrder.rawValue, forKey: "appsSortOrder") }
+    }
+
     var filteredApps: [AppInfo] {
-        guard !searchText.isEmpty else { return apps }
-        return apps.filter {
+        let visible = searchText.isEmpty ? apps : apps.filter {
             $0.name.localizedCaseInsensitiveContains(searchText) || $0.bundleID.localizedCaseInsensitiveContains(searchText)
         }
+        switch sortOrder {
+        case .name:
+            return visible // già in ordine alfabetico
+        case .size:
+            // Le app ancora da misurare finiscono in fondo.
+            return visible.sorted { (sizes[$0.id] ?? -1, $1.name) > (sizes[$1.id] ?? -1, $0.name) }
+        }
     }
+
+    var largestSize: Int64 { sizes.values.max() ?? 0 }
 
     var selectedApp: AppInfo? { apps.first { $0.id == selectedID } }
 
