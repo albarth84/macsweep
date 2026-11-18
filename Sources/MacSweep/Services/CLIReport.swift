@@ -7,6 +7,7 @@ enum CLIReport {
         if let flag = args.firstIndex(of: "--scan-types"), args.count > flag + 1 {
             scanTypes(URL(fileURLWithPath: args[flag + 1].expandingTilde))
         }
+        if args.contains("--whatsapp") { whatsApp() }
         guard let flag = args.firstIndex(of: "--report") else { return }
         let appQuery = args.count > flag + 1 ? args[flag + 1] : nil
 
@@ -36,6 +37,28 @@ enum CLIReport {
             } else {
                 print("App non trovata")
             }
+        }
+        exit(0)
+    }
+
+    /// `MacSweep --whatsapp`: media di WhatsApp per chat (righe di dettaglio rientrate di due spazi).
+    private static func whatsApp() {
+        let start = Date()
+        let result = WhatsAppScanner.scan()
+        let chats = result.chats
+        func sum(_ list: [WhatsAppChat], _ value: (WhatsAppChat) -> Int64) -> Int64 { list.reduce(0) { $0 + value($1) } }
+        print("Database letto: \(result.databaseFound), media referenziati: \(result.referencedCount)")
+        print("Cartelle: \(chats.count) (\(chats.filter(\.isStatus).count) Stati), tempo \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
+        print("Totale: \(Fmt.bytes(sum(chats) { $0.bytes })), usati \(Fmt.bytes(sum(chats) { $0.usedBytes })), non usati \(Fmt.bytes(sum(chats) { $0.unusedBytes }))")
+        print("Stati: \(Fmt.bytes(sum(chats.filter(\.isStatus)) { $0.bytes }))")
+        let named = chats.filter { !$0.name.hasPrefix("Contatto ") && !$0.name.hasPrefix("+") }.count
+        print("Chat con nome risolto: \(named) / \(chats.count)")
+        for kind in WhatsAppMediaKind.allCases {
+            let bytes = chats.reduce(Int64(0)) { $0 + ($1.groups.first { $0.kind == kind }?.bytes ?? 0) }
+            print("Tipo \(kind.title): \(Fmt.bytes(bytes))")
+        }
+        for chat in chats {
+            print("  \(Fmt.bytes(chat.bytes))\t non usati \(Fmt.bytes(chat.unusedBytes))\t\(chat.name)")
         }
         exit(0)
     }

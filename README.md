@@ -9,6 +9,7 @@ App nativa macOS (SwiftUI) per capire **dove finisce lo spazio sul disco** e far
 - **Mappa disco**: grafico sunburst interattivo (clic per entrare in una cartella, clic al centro per risalire), lista ordinata per dimensione, vista "file più grandi", barra del volume con spazio usato / eliminabile dal sistema / libero.
 - **Pulizia**: cache utente, log, cache delle app Electron/Chromium, Xcode DerivedData e DeviceSupport, cache dei package manager (npm, pip, uv, Gradle, Cargo…), `node_modules`, installer nei Download, backup iOS, Cestino.
 - **Pulizia dati IA**: cache e log di Claude, Claude Code, ChatGPT, Codex, Cursor, LM Studio; cronologia delle sessioni degli agenti; modelli locali scaricati (Ollama, LM Studio, Hugging Face, Whisper, PyTorch, VM di Claude). Ogni categoria ha un livello di rischio.
+- **WhatsApp**: cache degli Stati e media delle chat divisi per chat e per tipo (foto, video, vocali, documenti, sticker, miniature), con selezione granulare. MacSweep confronta i file con l'archivio delle chat (copia temporanea, sola lettura, solo nomi delle chat e percorsi dei media) e distingue i media ancora usati dai messaggi da quelli che nessun messaggio usa più. In modalità "Solo media non usati" le chat restano intatte.
 - **Disinstallazione completa delle app**: scegli un'app installata e MacSweep trova preferenze, cache, container, group container, stato salvato, log, cookie, LaunchAgent/Daemon e helper privilegiati collegati, da selezionare e spostare nel Cestino.
 - **File orfani**: trova dati lasciati da app non più installate, con un livello di confidenza (alta / media / bassa). I servizi di avvio che puntano a eseguibili inesistenti vengono segnalati come orfani certi.
 
@@ -43,10 +44,11 @@ Per aprire il progetto in Xcode: `open Package.swift`.
 swift run MacSweep --report            # categorie di pulizia e file orfani
 swift run MacSweep --report "Slack"    # anche i file collegati a un'app
 swift run MacSweep --scan-types ~      # statistiche per tipo di file
+swift run MacSweep --whatsapp          # media di WhatsApp per chat
 ```
 
 In sviluppo puoi aprire direttamente una sezione: `swift run MacSweep -page deepScan`
-(`overview`, `diskMap`, `deepScan`, `cleanup`, `apps`, `orphans`).
+(`overview`, `diskMap`, `deepScan`, `cleanup`, `whatsapp`, `apps`, `orphans`).
 
 ### Icona
 

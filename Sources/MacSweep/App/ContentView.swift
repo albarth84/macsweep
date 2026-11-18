@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case overview, diskMap, deepScan, cleanup, apps, orphans
+    case overview, diskMap, deepScan, cleanup, whatsapp, apps, orphans
 
     var id: String { rawValue }
 
@@ -11,6 +11,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .diskMap: "Mappa disco"
         case .deepScan: "Scansione file"
         case .cleanup: "Pulizia"
+        case .whatsapp: "WhatsApp"
         case .apps: "Applicazioni"
         case .orphans: "File orfani"
         }
@@ -22,6 +23,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .diskMap: "Dove finisce lo spazio, cartella per cartella"
         case .deepScan: "Analisi per tipo di file di un'unità"
         case .cleanup: "Cache, log, dati IA, sviluppo"
+        case .whatsapp: "Stati e media delle chat, chat per chat"
         case .apps: "Disinstalla app e tutti i loro file"
         case .orphans: "Dati di app già disinstallate"
         }
@@ -33,6 +35,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .diskMap: "chart.pie.fill"
         case .deepScan: "magnifyingglass"
         case .cleanup: "sparkles"
+        case .whatsapp: "bubble.left.and.bubble.right.fill"
         case .apps: "square.grid.2x2.fill"
         case .orphans: "questionmark.folder.fill"
         }
@@ -44,6 +47,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .diskMap: Theme.teal
         case .deepScan: Theme.green
         case .cleanup: Theme.pink
+        case .whatsapp: WhatsAppView.colors
         case .apps: Theme.blue
         case .orphans: Theme.orange
         }
@@ -59,6 +63,7 @@ struct ContentView: View {
     @State private var cleanupModel = CleanupModel()
     @State private var appsModel = AppsModel()
     @State private var orphansModel = OrphansModel()
+    @State private var whatsAppModel = WhatsAppModel()
     @State private var hasFullDiskAccess = Permissions.hasFullDiskAccess()
 
     var body: some View {
@@ -101,6 +106,7 @@ struct ContentView: View {
                 case .diskMap: DiskMapView(model: diskModel)
                 case .deepScan: DeepScanView(model: deepScanModel)
                 case .cleanup: CleanupView(model: cleanupModel)
+                case .whatsapp: WhatsAppView(model: whatsAppModel)
                 case .apps: AppsView(model: appsModel)
                 case .orphans: OrphansView(model: orphansModel)
                 }

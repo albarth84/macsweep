@@ -130,6 +130,45 @@ enum Trash {
         return move(children, sizes: sizes)
     }
 
+    /// Sposta molti file in un'unica cartella dentro il Cestino (`~/.Trash/<nome>`).
+    /// Molto più veloce di `trashItem` file per file e lascia un solo elemento nel Cestino.
+    static func moveIntoTrashFolder(_ urls: [URL], folderName: String, sizes: (URL) -> Int64) -> DeletionResult {
+        var result = DeletionResult()
+        let fm = FileManager.default
+        let destination = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent(".Trash")
+            .appendingPathComponent(folderName)
+        do {
+            try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+        } catch {
+            result.failed = urls.map { ($0, error.localizedDescription) }
+            return result
+        }
+        for url in urls {
+            guard SafetyGuard.isDeletable(url) else {
+                result.failed.append((url, "Percorso protetto"))
+                continue
+            }
+            var target = destination.appendingPathComponent(url.lastPathComponent)
+            var counter = 1
+            while fm.fileExists(atPath: target.path) {
+                let base = url.deletingPathExtension().lastPathComponent
+                let ext = url.pathExtension.isEmpty ? "" : "." + url.pathExtension
+                target = destination.appendingPathComponent("\(base) \(counter)\(ext)")
+                counter += 1
+            }
+            let size = sizes(url) // letta prima dello spostamento
+            do {
+                try fm.moveItem(at: url, to: target)
+                result.removed.append(url)
+                result.freed += size
+            } catch {
+                result.failed.append((url, error.localizedDescription))
+            }
+        }
+        return result
+    }
+
     /// Eliminazione definitiva (usata solo per svuotare il Cestino).
     static func deletePermanently(_ urls: [URL], sizes: [URL: Int64] = [:]) -> DeletionResult {
         var result = DeletionResult()
