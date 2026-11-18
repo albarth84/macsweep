@@ -15,6 +15,15 @@ struct MacSweepApp: App {
                 .frame(minWidth: 1050, minHeight: 680)
         }
         .windowToolbarStyle(.unified)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesCommand()
+            }
+        }
+
+        Settings {
+            SettingsView()
+        }
     }
 }
 
@@ -26,4 +35,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+}
+
+/// Voce di menu "Controlla aggiornamenti…": apre le Impostazioni e avvia il controllo.
+private struct CheckForUpdatesCommand: View {
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button("Controlla aggiornamenti…") {
+            openSettings()
+            Task { await UpdateManager.shared.check() }
+        }
+    }
 }

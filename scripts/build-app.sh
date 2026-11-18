@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Compila MacSweep e crea build/MacSweep.app (e opzionalmente un .dmg).
-# Uso: scripts/build-app.sh [--dmg]
+# Uso: scripts/build-app.sh [--dmg] [--zip]
+# La versione viene da $VERSION o dal file VERSION.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 APP_NAME="MacSweep"
 BUNDLE_ID="io.github.albarth84.macsweep"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-$(tr -d '[:space:]' < VERSION)}"
 BUILD_DIR="build"
 APP_DIR="$BUILD_DIR/$APP_NAME.app"
 
@@ -45,7 +46,14 @@ PLIST
 echo "▸ Firma ad-hoc"
 codesign --force --deep --sign - "$APP_DIR"
 
-if [[ "${1:-}" == "--dmg" ]]; then
+if [[ " $* " == *" --zip "* ]]; then
+    ZIP="$BUILD_DIR/$APP_NAME-$VERSION.zip"
+    echo "▸ Creazione $ZIP"
+    rm -f "$ZIP"
+    /usr/bin/ditto -c -k --keepParent "$APP_DIR" "$ZIP"
+fi
+
+if [[ " $* " == *" --dmg "* ]]; then
     DMG="$BUILD_DIR/$APP_NAME-$VERSION.dmg"
     echo "▸ Creazione $DMG"
     rm -f "$DMG"

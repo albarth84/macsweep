@@ -3,21 +3,31 @@ import AppKit
 
 struct WhatsAppView: View {
     @Bindable var model: WhatsAppModel
+    var onBack: () -> Void
     @State private var confirming = false
     @State private var whatsAppRunning = WhatsAppScanner.isRunning
 
     static let colors = [Color(hex: 0x25D366), Color(hex: 0x128C7E)]
+    static let symbol = "bubble.left.and.bubble.right.fill"
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack {
+                Button(action: onBack) { Label("Pulizia", systemImage: "chevron.left") }
+                    .buttonStyle(.link)
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 14)
             PageHeader(
                 title: "WhatsApp",
                 subtitle: "Cache degli Stati e media delle chat, divisi per chat e per tipo.",
-                symbol: SidebarItem.whatsapp.symbol, colors: Self.colors
+                symbol: Self.symbol, colors: Self.colors
             ) {
-                Button { model.scan() } label: { Label("Analizza", systemImage: "arrow.clockwise") }
+                Button { model.scan() } label: { Label("Analizza di nuovo", systemImage: "arrow.clockwise") }
                     .disabled(model.isScanning)
             }
+            .padding(.top, -10)
             content
         }
         .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in

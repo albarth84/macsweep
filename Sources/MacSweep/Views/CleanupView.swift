@@ -3,7 +3,9 @@ import AppKit
 
 struct CleanupView: View {
     @Bindable var model: CleanupModel
+    @Bindable var whatsApp: WhatsAppModel
     @State private var confirming = false
+    @State private var showingWhatsApp = false
 
     private var groups: [(String, [CleanupCategory])] {
         let ai = model.categories.filter { $0.id.hasPrefix("ai-") }
@@ -14,6 +16,15 @@ struct CleanupView: View {
     }
 
     var body: some View {
+        if showingWhatsApp {
+            WhatsAppView(model: whatsApp) { showingWhatsApp = false }
+                .transition(.move(edge: .trailing))
+        } else {
+            categoriesPage
+        }
+    }
+
+    private var categoriesPage: some View {
         VStack(spacing: 0) {
             PageHeader(
                 title: "Pulizia",
@@ -29,6 +40,13 @@ struct CleanupView: View {
                         Text(title).font(.headline).foregroundStyle(.secondary).padding(.top, 8)
                         ForEach(categories) { category in
                             CategoryCard(model: model, category: category)
+                        }
+                    }
+                    if WhatsAppScanner.isAvailable {
+                        Text("Messaggistica").font(.headline).foregroundStyle(.secondary).padding(.top, 8)
+                        WhatsAppCard(model: whatsApp) {
+                            if !whatsApp.hasScanned && !whatsApp.isScanning { whatsApp.scan() }
+                            withAnimation(.easeInOut(duration: 0.2)) { showingWhatsApp = true }
                         }
                     }
                 }
@@ -138,6 +156,46 @@ private struct CategoryCard: View {
                 .padding(.leading, 40)
             }
         }
+        .card(padding: 14)
+    }
+}
+
+/// Scheda WhatsApp nella pagina Pulizia: apre il dettaglio per chat.
+private struct WhatsAppCard: View {
+    let model: WhatsAppModel
+    var onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 12) {
+                Image(systemName: "chevron.right.circle").opacity(0) // allinea con le caselle delle altre schede
+                IconTile(symbol: WhatsAppView.symbol, colors: WhatsAppView.colors, size: 36)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text("WhatsApp").font(.headline)
+                        Pill(text: "Scelta per chat", color: WhatsAppView.colors[1])
+                    }
+                    Text("Cache degli Stati e media delle chat, divisi per chat e per tipo. I media non più usati dai messaggi si eliminano senza toccare le conversazioni.")
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                Spacer(minLength: 8)
+                if model.isScanning {
+                    ProgressView().controlSize(.small)
+                } else if model.hasScanned {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(Fmt.bytes(model.unusedBytes))
+                            .font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
+                        Text("non usati · \(Fmt.bytes(model.selectedBytes)) selezionati")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("Analizza").font(.callout.weight(.medium)).foregroundStyle(Color.accentColor)
+                }
+                Image(systemName: "chevron.right").foregroundStyle(.secondary).frame(width: 24)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         .card(padding: 14)
     }
 }

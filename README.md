@@ -9,7 +9,7 @@ App nativa macOS (SwiftUI) per capire **dove finisce lo spazio sul disco** e far
 - **Mappa disco**: grafico sunburst interattivo (clic per entrare in una cartella, clic al centro per risalire), lista ordinata per dimensione, vista "file più grandi", barra del volume con spazio usato / eliminabile dal sistema / libero.
 - **Pulizia**: cache utente, log, cache delle app Electron/Chromium, Xcode DerivedData e DeviceSupport, cache dei package manager (npm, pip, uv, Gradle, Cargo…), `node_modules`, installer nei Download, backup iOS, Cestino.
 - **Pulizia dati IA**: cache e log di Claude, Claude Code, ChatGPT, Codex, Cursor, LM Studio; cronologia delle sessioni degli agenti; modelli locali scaricati (Ollama, LM Studio, Hugging Face, Whisper, PyTorch, VM di Claude). Ogni categoria ha un livello di rischio.
-- **WhatsApp**: cache degli Stati e media delle chat divisi per chat e per tipo (foto, video, vocali, documenti, sticker, miniature), con selezione granulare. MacSweep confronta i file con l'archivio delle chat (copia temporanea, sola lettura, solo nomi delle chat e percorsi dei media) e distingue i media ancora usati dai messaggi da quelli che nessun messaggio usa più. In modalità "Solo media non usati" le chat restano intatte.
+- **Pulizia › WhatsApp**: cache degli Stati e media delle chat divisi per chat e per tipo (foto, video, vocali, documenti, sticker, miniature), con selezione granulare. MacSweep confronta i file con l'archivio delle chat (copia temporanea, sola lettura, solo nomi delle chat e percorsi dei media) e distingue i media ancora usati dai messaggi da quelli che nessun messaggio usa più. In modalità "Solo media non usati" le chat restano intatte.
 - **Disinstallazione completa delle app**: scegli un'app installata e MacSweep trova preferenze, cache, container, group container, stato salvato, log, cookie, LaunchAgent/Daemon e helper privilegiati collegati, da selezionare e spostare nel Cestino.
 - **File orfani**: trova dati lasciati da app non più installate, con un livello di confidenza (alta / media / bassa). I servizi di avvio che puntano a eseguibili inesistenti vengono segnalati come orfani certi.
 
@@ -48,7 +48,7 @@ swift run MacSweep --whatsapp          # media di WhatsApp per chat
 ```
 
 In sviluppo puoi aprire direttamente una sezione: `swift run MacSweep -page deepScan`
-(`overview`, `diskMap`, `deepScan`, `cleanup`, `whatsapp`, `apps`, `orphans`).
+(`overview`, `diskMap`, `deepScan`, `cleanup`, `apps`, `orphans`).
 
 ### Icona
 
@@ -62,13 +62,24 @@ L'app mostra un avviso con il collegamento diretto quando il permesso manca.
 
 L'app non è firmata con un certificato Developer ID: al primo avvio fai clic destro › Apri.
 
+## Aggiornamenti
+
+MacSweep si aggiorna da solo: **Impostazioni (⌘,) › Aggiornamenti** oppure menu **MacSweep › Controlla aggiornamenti…**.
+L'app legge l'ultima release di questo repository, scarica `MacSweep-X.Y.Z.zip`, ne verifica l'hash con
+`SHA256SUMS.txt`, controlla bundle ID e versione, poi sostituisce sé stessa e si riavvia. Il controllo automatico
+avviene al massimo una volta al giorno e si può disattivare.
+
 ## Release
 
-Un tag `vX.Y.Z` avvia GitHub Actions, che compila l'app universale (Apple Silicon + Intel) e pubblica il `.dmg` nella release.
+Numerazione: si parte da `0.1.0` e si incrementa l'ultima cifra (`0.1.1`, `0.1.2`…) finché non arriva un
+aggiornamento importante. La versione corrente è nel file `VERSION`.
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+scripts/release.sh 0.1.1
 ```
+
+Lo script aggiorna `VERSION`, crea commit e tag `v0.1.1` e fa il push. GitHub Actions compila l'app universale
+(Apple Silicon + Intel) e pubblica `.zip`, `.dmg` e `SHA256SUMS.txt` nella release.
 
 ## Struttura
 
