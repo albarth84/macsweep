@@ -58,13 +58,40 @@ struct OrphansView: View {
                 message: model.hasScanned ? "Non c'è niente da pulire con questo livello di confidenza." : "",
                 colors: Theme.green)
         } else {
-            List {
-                ForEach(model.visibleIndices, id: \.self) { index in
-                    OrphanRow(item: $model.items[index])
+            VStack(spacing: 0) {
+                selectAllBar
+                Divider()
+                List {
+                    ForEach(model.visibleIndices, id: \.self) { index in
+                        OrphanRow(item: $model.items[index])
+                    }
                 }
+                .scrollContentBackground(.hidden)
             }
-            .scrollContentBackground(.hidden)
         }
+    }
+
+    /// Casella "Seleziona tutto" in cima all'elenco: agisce sugli elementi visibili col filtro attuale.
+    private var selectAllBar: some View {
+        let visible = model.visibleIndices
+        let selected = visible.filter { model.items[$0].selected }.count
+        let state: Bool? = selected == 0 ? false : (selected == visible.count ? true : nil)
+        let total = visible.reduce(Int64(0)) { $0 + model.items[$1].size }
+        return HStack(spacing: 10) {
+            TriStateCheckbox(state: state) { model.setAllVisible(state != true) }
+            Text("Seleziona tutto").font(.headline)
+            Text("\(visible.count) elementi · \(Fmt.bytes(total))")
+                .foregroundStyle(.secondary)
+            Spacer()
+            if selected > 0 {
+                Text("\(selected) selezionati · \(Fmt.bytes(model.selectedTotal))")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .onTapGesture { model.setAllVisible(state != true) }
     }
 
     private var footer: some View {
