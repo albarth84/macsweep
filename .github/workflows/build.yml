@@ -30,6 +30,27 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Import signing certificate
+        id: signing
+        env:
+          CERT_P12: ${{ secrets.MACSWEEP_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACSWEEP_CERT_PASSWORD }}
+        run: |
+          if [[ -z "$CERT_P12" ]]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Nessun certificato nei secrets: build di prova con firma ad-hoc."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p ci "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p ci "$KEYCHAIN"
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
       - name: Build app
         run: VERSION="${{ steps.version.outputs.version }}" scripts/build-app.sh --zip --dmg
 
@@ -48,7 +69,8 @@ jobs:
             build/SHA256SUMS.txt
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Si pubblica solo con la firma stabile: una build ad-hoc farebbe richiedere di nuovo i permessi.
+        if: startsWith(github.ref, 'refs/tags/v') && steps.signing.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

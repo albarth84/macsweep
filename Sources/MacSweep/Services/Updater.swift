@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import CryptoKit
+import Security
 import Observation
 
 /// Versione semantica "MAJOR.MINOR.PATCH" (accetta il prefisso "v").
@@ -207,6 +208,7 @@ final class UpdateManager {
                 throw UpdateError.message("Il pacchetto scaricato non è una versione valida di MacSweep.")
             }
 
+            try verifySignature(of: newApp)
             try relaunch(replacingWith: newApp, scriptDirectory: work)
         } catch {
             state = .failed(Self.describe(error))
@@ -256,6 +258,33 @@ final class UpdateManager {
         let actual = digest.map { String(format: "%02x", $0) }.joined()
         guard actual == expected else {
             throw UpdateError.message("Il file scaricato non corrisponde al checksum: aggiornamento annullato.")
+        }
+    }
+
+    /// La nuova versione deve soddisfare il requisito di firma di quella installata
+    /// (stesso bundle ID e stesso certificato). Così i permessi restano validi e un pacchetto
+    /// firmato da altri viene rifiutato. Le build ad-hoc (requisito basato su cdhash) non hanno
+    /// un'identità da confrontare: in quel caso si accetta l'aggiornamento.
+    private func verifySignature(of newApp: URL) throws {
+        var selfCode: SecCode?
+        var staticSelf: SecStaticCode?
+        var requirement: SecRequirement?
+        guard SecCodeCopySelf([], &selfCode) == errSecSuccess, let selfCode,
+              SecCodeCopyStaticCode(selfCode, [], &staticSelf) == errSecSuccess, let staticSelf,
+              SecCodeCopyDesignatedRequirement(staticSelf, [], &requirement) == errSecSuccess, let requirement
+        else { return }
+
+        var text: CFString?
+        SecRequirementCopyString(requirement, [], &text)
+        if let text = text as String?, text.contains("cdhash") { return }
+
+        var newCode: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(newApp as CFURL, [], &newCode) == errSecSuccess, let newCode else {
+            throw UpdateError.message("Impossibile leggere la firma della nuova versione.")
+        }
+        let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSStrictValidate)
+        guard SecStaticCodeCheckValidity(newCode, flags, requirement) == errSecSuccess else {
+            throw UpdateError.message("La nuova versione non è firmata con lo stesso certificato: aggiornamento annullato.")
         }
     }
 

@@ -37,14 +37,36 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>MacSweep analizza la Scrivania. Per non ricevere una richiesta per ogni cartella, concedi l'Accesso completo al disco.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>MacSweep analizza Documenti. Per non ricevere una richiesta per ogni cartella, concedi l'Accesso completo al disco.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>MacSweep analizza Download. Per non ricevere una richiesta per ogni cartella, concedi l'Accesso completo al disco.</string>
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>MacSweep analizza le unità esterne che scegli di scansionare.</string>
+    <key>NSNetworkVolumesUsageDescription</key>
+    <string>MacSweep analizza i volumi di rete che scegli di scansionare.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>MacSweep usa AppleScript solo per chiedere la password di amministratore quando rimuovi file di sistema.</string>
 </dict>
 </plist>
 PLIST
 
-echo "▸ Firma ad-hoc"
-codesign --force --deep --sign - "$APP_DIR"
+# Firma con un certificato stabile: macOS lega i permessi (es. Accesso completo al disco)
+# all'identità della firma. Con la firma ad-hoc ogni build sembra un'app nuova.
+SIGN_IDENTITY="${SIGN_IDENTITY:-MacSweep Self-Signed}"
+if ! security find-identity -p codesigning 2>/dev/null | grep -q "\"$SIGN_IDENTITY\""; then
+    if [[ "${REQUIRE_SIGNING:-0}" == "1" ]]; then
+        echo "✗ Identità di firma \"$SIGN_IDENTITY\" non trovata nel portachiavi." >&2
+        exit 1
+    fi
+    echo "⚠︎ Identità \"$SIGN_IDENTITY\" non trovata: firma ad-hoc (i permessi andranno ridati a ogni build)."
+    SIGN_IDENTITY="-"
+fi
+echo "▸ Firma ($SIGN_IDENTITY)"
+xattr -cr "$APP_DIR"
+codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_DIR"
 
 if [[ " $* " == *" --zip "* ]]; then
     ZIP="$BUILD_DIR/$APP_NAME-$VERSION.zip"

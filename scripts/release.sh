@@ -20,6 +20,10 @@ if [[ -n "$(git status --porcelain)" ]]; then
     echo "Ci sono modifiche non committate: fai prima il commit." >&2
     exit 1
 fi
+if [[ $LOCAL == 1 ]] && ! security find-identity -p codesigning 2>/dev/null | grep -q '"MacSweep Self-Signed"'; then
+    echo "Manca il certificato \"MacSweep Self-Signed\" nel portachiavi: vedi README › Firma." >&2
+    exit 1
+fi
 if git rev-parse "v$NEW" >/dev/null 2>&1; then
     echo "Il tag v$NEW esiste già." >&2
     exit 1
@@ -32,7 +36,7 @@ git tag -a "v$NEW" -m "MacSweep $NEW"
 git push origin HEAD "v$NEW"
 
 if [[ $LOCAL == 1 ]]; then
-    VERSION="$NEW" scripts/build-app.sh --zip --dmg
+    REQUIRE_SIGNING=1 VERSION="$NEW" scripts/build-app.sh --zip --dmg
     (cd build && shasum -a 256 "MacSweep-$NEW.zip" "MacSweep-$NEW.dmg" > SHA256SUMS.txt)
     gh release create "v$NEW" --verify-tag --title "MacSweep $NEW" --generate-notes \
         "build/MacSweep-$NEW.zip" "build/MacSweep-$NEW.dmg" build/SHA256SUMS.txt

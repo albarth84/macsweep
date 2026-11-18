@@ -42,10 +42,11 @@ enum FileSize {
 
 enum Permissions {
     /// Euristica: queste cartelle sono leggibili solo con "Accesso completo al disco".
+    /// Senza permesso la lettura fallisce in silenzio: nessuna richiesta all'utente.
+    /// (Niente sonde in ~/Library/Containers: farebbero scattare l'avviso "dati di altre app".)
     static func hasFullDiskAccess() -> Bool {
         let probes = [
             "~/Library/Safari",
-            "~/Library/Containers/com.apple.stocks",
             "~/Library/Mail",
             "/Library/Application Support/com.apple.TCC",
         ]
@@ -58,8 +59,12 @@ enum Permissions {
     }
 
     static func openFullDiskAccessSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
-            NSWorkspace.shared.open(url)
+        let candidates = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+        ]
+        for candidate in candidates {
+            if let url = URL(string: candidate), NSWorkspace.shared.open(url) { return }
         }
     }
 }

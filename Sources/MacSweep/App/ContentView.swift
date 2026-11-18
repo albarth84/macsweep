@@ -61,8 +61,22 @@ struct ContentView: View {
     @State private var orphansModel = OrphansModel()
     @State private var whatsAppModel = WhatsAppModel()
     @State private var hasFullDiskAccess = Permissions.hasFullDiskAccess()
+    /// L'utente ha scelto di continuare senza Accesso completo al disco (solo per questa sessione).
+    @State private var limitedAccess = false
 
     var body: some View {
+        // Nessuna lettura di cartelle protette finché l'utente non ha deciso: evita le richieste
+        // di permesso cartella per cartella.
+        if hasFullDiskAccess || limitedAccess {
+            mainView
+        } else {
+            FullDiskAccessOnboarding(
+                onGranted: { hasFullDiskAccess = true },
+                onContinueLimited: { limitedAccess = true })
+        }
+    }
+
+    private var mainView: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 Section {

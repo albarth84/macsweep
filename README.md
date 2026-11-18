@@ -56,11 +56,24 @@ L'icona è generata in codice: `swift scripts/make-icon.swift` produce `Resource
 
 ## Permessi
 
-Per analizzare tutte le cartelle concedi **Accesso completo al disco**:
-Impostazioni di Sistema › Privacy e sicurezza › Accesso completo al disco › aggiungi MacSweep.
-L'app mostra un avviso con il collegamento diretto quando il permesso manca.
+MacSweep chiede un solo permesso: **Accesso completo al disco**. Al primo avvio mostra una schermata dedicata
+e non legge nessuna cartella finché il permesso non è attivo, così macOS non chiede l'accesso cartella per
+cartella (Download, Scrivania, Documenti, dati di altre app). Grazie alla firma stabile il permesso si concede
+una volta per Mac e resta valido dopo ogni aggiornamento. Si può anche continuare con accesso limitato.
 
 L'app non è firmata con un certificato Developer ID: al primo avvio fai clic destro › Apri.
+
+## Firma
+
+macOS lega i permessi (Accesso completo al disco, accesso ai dati di altre app) all'identità della firma.
+Le release sono firmate con il certificato autofirmato **"MacSweep Self-Signed"**, sempre lo stesso: il permesso
+si concede una sola volta e resta valido dopo ogni aggiornamento. L'aggiornamento in-app installa una nuova
+versione solo se è firmata con lo stesso certificato.
+
+Il certificato vive nel portachiavi di chi pubblica le release. Senza certificato `scripts/build-app.sh`
+ricade sulla firma ad-hoc (va bene per lo sviluppo) e `scripts/release.sh --local` si rifiuta di pubblicare.
+Per far pubblicare anche a GitHub Actions, esporta il certificato in `.p12` e salvalo nei secrets
+`MACSWEEP_CERT_P12` (base64) e `MACSWEEP_CERT_PASSWORD`; senza secrets la CI compila ma non pubblica.
 
 ## Aggiornamenti
 
