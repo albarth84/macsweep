@@ -44,13 +44,14 @@ enum Permissions {
     /// Euristica: queste cartelle sono leggibili solo con "Accesso completo al disco".
     /// Senza permesso la lettura fallisce in silenzio: nessuna richiesta all'utente.
     /// (Niente sonde in ~/Library/Containers: farebbero scattare l'avviso "dati di altre app".)
+    static let probePaths = [
+        "~/Library/Safari",
+        "~/Library/Mail",
+        "/Library/Application Support/com.apple.TCC",
+    ]
+
     static func hasFullDiskAccess() -> Bool {
-        let probes = [
-            "~/Library/Safari",
-            "~/Library/Mail",
-            "/Library/Application Support/com.apple.TCC",
-        ]
-        for probe in probes {
+        for probe in probePaths {
             let path = probe.expandingTilde
             guard FileSize.exists(path) else { continue }
             if (try? FileManager.default.contentsOfDirectory(atPath: path)) != nil { return true }

@@ -83,10 +83,15 @@ struct FullDiskAccessOnboarding: View {
                     Label("Mostra MacSweep nel Finder", systemImage: "folder")
                 }
             }
-            step(3, "Torna qui: MacSweep se ne accorge da solo.") {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("In attesa del permesso…").foregroundStyle(.secondary)
+            step(3, "Torna qui. Spesso macOS applica il permesso solo dopo un riavvio di MacSweep: se l'interruttore è già attivo, riavvia.") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("In attesa del permesso…").foregroundStyle(.secondary)
+                    }
+                    Button { Relauncher.relaunch() } label: {
+                        Label("Ho già attivato l'interruttore: riavvia MacSweep", systemImage: "arrow.clockwise")
+                    }
                 }
             }
         }

@@ -8,6 +8,7 @@ enum CLIReport {
             scanTypes(URL(fileURLWithPath: args[flag + 1].expandingTilde))
         }
         if args.contains("--whatsapp") { whatsApp() }
+        if args.contains("--check-fda") { checkFullDiskAccess() }
         guard let flag = args.firstIndex(of: "--report") else { return }
         let appQuery = args.count > flag + 1 ? args[flag + 1] : nil
 
@@ -60,6 +61,23 @@ enum CLIReport {
         for chat in chats {
             print("  \(Fmt.bytes(chat.bytes))\t non usati \(Fmt.bytes(chat.unusedBytes))\t\(chat.name)")
         }
+        exit(0)
+    }
+
+    /// `MacSweep --check-fda`: esito di ogni controllo dell'Accesso completo al disco.
+    private static func checkFullDiskAccess() {
+        print("Bundle: \(Bundle.main.bundlePath)")
+        for path in Permissions.probePaths {
+            let expanded = path.expandingTilde
+            let exists = FileManager.default.fileExists(atPath: expanded)
+            do {
+                let items = try FileManager.default.contentsOfDirectory(atPath: expanded)
+                print("OK   \(path) (\(items.count) elementi)")
+            } catch {
+                print("FAIL \(path) exists=\(exists): \((error as NSError).domain) \((error as NSError).code) \(((error as NSError).userInfo[NSUnderlyingErrorKey] as? NSError)?.code ?? 0)")
+            }
+        }
+        print("hasFullDiskAccess = \(Permissions.hasFullDiskAccess())")
         exit(0)
     }
 
