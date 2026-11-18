@@ -78,7 +78,9 @@ aggiornamento importante. La versione corrente è nel file `VERSION`.
 scripts/release.sh 0.1.1
 ```
 
-Lo script aggiorna `VERSION`, crea commit e tag `v0.1.1` e fa il push. GitHub Actions compila l'app universale
+Lo script aggiorna `VERSION`, crea commit e tag `v0.1.1` e fa il push.
+Con `scripts/release.sh 0.1.1 --local` compila e pubblica la release direttamente dal Mac
+(utile quando i runner macOS di GitHub restano in coda). GitHub Actions compila l'app universale
 (Apple Silicon + Intel) e pubblica `.zip`, `.dmg` e `SHA256SUMS.txt` nella release.
 
 ## Struttura

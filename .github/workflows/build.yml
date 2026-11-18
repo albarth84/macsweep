@@ -52,5 +52,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release già pubblicata (scripts/release.sh --local): nulla da fare."
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" build/*.zip build/*.dmg build/SHA256SUMS.txt \
             --title "MacSweep ${{ steps.version.outputs.version }}" --generate-notes
