@@ -1,11 +1,12 @@
 import SwiftUI
+import AppKit
 
 struct SunburstSegment {
     let node: FileNode
     let depth: Int
     let start: Double // radianti, 0 = ore 12, senso orario
     let end: Double
-    let hue: Double
+    let colorIndex: Int
 }
 
 /// Grafico a anelli concentrici: ogni anello è un livello di profondità,
@@ -31,23 +32,28 @@ struct SunburstView: View {
                         let path = layout.path(for: segment)
                         context.fill(path, with: .color(color(for: segment)))
                         if segment.node === hovered {
+                            context.fill(path, with: .color(.white.opacity(0.25)))
                             context.stroke(path, with: .color(.primary), lineWidth: 2)
                         } else {
-                            context.stroke(path, with: .color(.black.opacity(0.18)), lineWidth: 0.5)
+                            context.stroke(path, with: .color(Theme.cardBackground), lineWidth: 1)
                         }
                     }
                 }
 
                 VStack(spacing: 4) {
                     let focus = hovered ?? root
-                    Image(systemName: focus.isDirectory ? "folder.fill" : "doc.fill")
-                        .foregroundStyle(.secondary)
+                    Image(nsImage: NSWorkspace.shared.icon(forFile: focus.url.path))
+                        .resizable().frame(width: 30, height: 30)
                     Text(focus.name)
                         .font(.headline)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                     Text(Fmt.bytes(focus.size))
-                        .font(.title3.monospacedDigit())
+                        .font(.system(.title2, design: .rounded).weight(.bold).monospacedDigit())
+                    if hovered != nil, root.size > 0 {
+                        Text(Double(focus.size) / Double(root.size), format: .percent.precision(.fractionLength(1)))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     if hovered == nil && root.parent != nil {
                         Text("clic al centro per risalire").font(.caption2).foregroundStyle(.secondary)
                     }
@@ -74,29 +80,31 @@ struct SunburstView: View {
     }
 
     private func color(for segment: SunburstSegment) -> Color {
-        if segment.node.isAggregate { return Color.gray.opacity(0.35) }
-        let brightness = 0.92 - Double(segment.depth) * 0.08
-        let saturation = segment.node.isDirectory ? 0.62 : 0.35
-        return Color(hue: segment.hue, saturation: saturation, brightness: brightness)
+        if segment.node.isAggregate { return Color.gray.opacity(0.3) }
+        let base = Theme.chart[segment.colorIndex % Theme.chart.count]
+        // Più si scende di livello, più il colore schiarisce; i file sono più tenui delle cartelle.
+        let fraction = min(0.65, Double(segment.depth) * 0.13 + (segment.node.isDirectory ? 0 : 0.18))
+        return Color(base.blended(withFraction: fraction, of: .white) ?? base)
     }
 
     static func segments(for root: FileNode) -> [SunburstSegment] {
         var out: [SunburstSegment] = []
-        func walk(_ node: FileNode, depth: Int, start: Double, span: Double, hue: Double?) {
+        func walk(_ node: FileNode, depth: Int, start: Double, span: Double, colorIndex: Int?) {
             guard node.size > 0, depth < maxDepth else { return }
             var angle = start
-            for child in node.children where child.size > 0 {
+            for (index, child) in node.children.enumerated() where child.size > 0 {
                 let childSpan = span * Double(child.size) / Double(node.size)
                 defer { angle += childSpan }
                 guard childSpan >= minSpan else { continue }
-                let childHue = hue ?? ((angle + childSpan / 2) / (2 * .pi))
-                out.append(SunburstSegment(node: child, depth: depth, start: angle, end: angle + childSpan, hue: childHue))
+                let childColor = colorIndex ?? index
+                out.append(SunburstSegment(
+                    node: child, depth: depth, start: angle, end: angle + childSpan, colorIndex: childColor))
                 if child.isDirectory {
-                    walk(child, depth: depth + 1, start: angle, span: childSpan, hue: childHue)
+                    walk(child, depth: depth + 1, start: angle, span: childSpan, colorIndex: childColor)
                 }
             }
         }
-        walk(root, depth: 0, start: 0, span: 2 * .pi, hue: nil)
+        walk(root, depth: 0, start: 0, span: 2 * .pi, colorIndex: nil)
         return out
     }
 

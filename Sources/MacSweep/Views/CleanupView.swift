@@ -1,27 +1,44 @@
 import SwiftUI
+import AppKit
 
 struct CleanupView: View {
     @Bindable var model: CleanupModel
     @State private var confirming = false
 
+    private var groups: [(String, [CleanupCategory])] {
+        let ai = model.categories.filter { $0.id.hasPrefix("ai-") }
+        let dev = model.categories.filter { ["xcode-derived", "xcode-support", "package-caches", "node-modules"].contains($0.id) }
+        let used = Set((ai + dev).map(\.id))
+        let system = model.categories.filter { !used.contains($0.id) }
+        return [("Sistema e app", system), ("Intelligenza artificiale", ai), ("Sviluppo", dev)]
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            List {
-                ForEach(model.categories) { category in
-                    CategorySection(model: model, category: category)
+            PageHeader(
+                title: "Pulizia",
+                subtitle: "Le categorie sicure sono già selezionate. Espandi per scegliere i singoli elementi.",
+                symbol: SidebarItem.cleanup.symbol, colors: Theme.pink
+            ) {
+                Button { model.analyzeAll() } label: { Label("Analizza di nuovo", systemImage: "arrow.clockwise") }
+                    .disabled(!model.analyzing.isEmpty)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(groups, id: \.0) { title, categories in
+                        Text(title).font(.headline).foregroundStyle(.secondary).padding(.top, 8)
+                        ForEach(categories) { category in
+                            CategoryCard(model: model, category: category)
+                        }
+                    }
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
             }
             Divider()
-            footer.padding()
+            footer.padding(.horizontal, 24).padding(.vertical, 14)
         }
-        .navigationTitle("Pulizia")
-        .toolbar {
-            Button {
-                model.analyzeAll()
-            } label: { Label("Analizza tutto", systemImage: "magnifyingglass") }
-                .disabled(!model.analyzing.isEmpty)
-        }
-        .onAppear { if !model.hasAnalyzed { model.analyzeAll() } }
+        .onAppear { if !model.hasAnalyzed && model.analyzing.isEmpty { model.analyzeAll() } }
         .confirmationDialog(
             "Pulire \(model.selectedCount) elementi (\(Fmt.bytes(model.selectedTotal)))?",
             isPresented: $confirming, titleVisibility: .visible
@@ -38,61 +55,90 @@ struct CleanupView: View {
     }
 
     private var footer: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text("Selezionati: \(Fmt.bytes(model.selectedTotal))").font(.headline)
-                Text("Lo spazio si libera definitivamente svuotando il Cestino.")
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Fmt.bytes(model.selectedTotal))
+                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .contentTransition(.numericText())
+                Text("\(model.selectedCount) elementi selezionati · lo spazio si libera svuotando il Cestino")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if model.isCleaning { ProgressView().controlSize(.small) }
-            Button("Pulisci selezionati…") { confirming = true }
-                .buttonStyle(.borderedProminent)
+            Button { confirming = true } label: { Label("Pulisci selezionati", systemImage: "sparkles") }
+                .buttonStyle(.gradient(Theme.pink))
                 .disabled(model.selectedCount == 0 || model.isCleaning)
         }
+        .animation(.default, value: model.selectedTotal)
     }
 }
 
-private struct CategorySection: View {
+private struct CategoryCard: View {
     @Bindable var model: CleanupModel
     let category: CleanupCategory
     @State private var expanded = false
 
+    private var tileColors: [Color] {
+        switch category.risk {
+        case .safe: category.id.hasPrefix("ai-") ? Theme.brand : Theme.teal
+        case .review: Theme.orange
+        case .caution: Theme.red
+        }
+    }
+
     var body: some View {
         let list = model.items[category.id, default: []]
-        DisclosureGroup(isExpanded: $expanded) {
-            ForEach(list) { item in
-                ItemRow(model: model, categoryID: category.id, item: item)
-            }
-            if list.isEmpty && !model.analyzing.contains(category.id) {
-                Text("Niente da pulire").foregroundStyle(.secondary)
-            }
-        } label: {
-            HStack(spacing: 10) {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
                 Toggle("", isOn: Binding(
                     get: { model.isAllSelected(category.id) },
                     set: { model.setAll(category.id, selected: $0) }))
                     .labelsHidden()
+                    .toggleStyle(.checkbox)
                     .disabled(list.isEmpty)
-                Image(systemName: category.symbol)
-                    .frame(width: 22)
-                    .foregroundStyle(.tint)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
+                IconTile(symbol: category.symbol, colors: tileColors, size: 36)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
                         Text(category.title).font(.headline)
                         RiskBadge(risk: category.risk)
                     }
-                    Text(category.detail).font(.caption).foregroundStyle(.secondary)
+                    Text(category.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
-                Spacer()
+                Spacer(minLength: 8)
                 if model.analyzing.contains(category.id) {
                     ProgressView().controlSize(.small)
                 } else {
-                    Text(Fmt.bytes(model.total(category.id))).monospacedDigit()
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(Fmt.bytes(model.total(category.id)))
+                            .font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
+                        Text("\(list.count) elementi").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(list.isEmpty)
             }
-            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+            .onTapGesture { if !list.isEmpty { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } }
+
+            if expanded && !list.isEmpty {
+                Divider().padding(.vertical, 10)
+                LazyVStack(spacing: 6) {
+                    ForEach(list) { item in
+                        ItemRow(model: model, categoryID: category.id, item: item)
+                    }
+                }
+                .padding(.leading, 40)
+            }
         }
+        .card(padding: 14)
     }
 }
 
@@ -102,28 +148,31 @@ private struct ItemRow: View {
     let item: CleanupItem
 
     var body: some View {
-        HStack {
-            Toggle(isOn: Binding(
+        HStack(spacing: 10) {
+            Toggle("", isOn: Binding(
                 get: { item.selected },
                 set: { newValue in
                     if let i = model.items[categoryID]?.firstIndex(where: { $0.id == item.id }) {
                         model.items[categoryID]?[i].selected = newValue
                     }
-                })
-            ) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(item.displayName).lineLimit(1).truncationMode(.middle)
-                    if item.contentsOnly {
-                        Text("svuota il contenuto").font(.caption2).foregroundStyle(.secondary)
-                    }
+                }))
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+            Image(nsImage: NSWorkspace.shared.icon(forFile: item.url.path))
+                .resizable().frame(width: 18, height: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.displayName).lineLimit(1).truncationMode(.middle)
+                if item.contentsOnly {
+                    Text("svuota il contenuto, la cartella resta").font(.caption2).foregroundStyle(.secondary)
                 }
             }
             Spacer()
             Text(Fmt.bytes(item.size)).monospacedDigit().foregroundStyle(.secondary)
-            Button { Finder.reveal(item.url) } label: { Image(systemName: "magnifyingglass") }
+            Button { Finder.reveal(item.url) } label: { Image(systemName: "arrow.up.forward.app") }
                 .buttonStyle(.borderless)
                 .help("Mostra nel Finder")
         }
+        .font(.callout)
     }
 }
 

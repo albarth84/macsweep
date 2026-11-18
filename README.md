@@ -4,6 +4,8 @@ App nativa macOS (SwiftUI) per capire **dove finisce lo spazio sul disco** e far
 
 ## Funzioni
 
+- **Panoramica**: anello di occupazione del disco, spazio recuperabile in sicurezza e accesso rapido agli strumenti.
+- **Scansione file**: scegli un'unità (interna o esterna) o una cartella; MacSweep classifica ogni file per tipo (immagini, video, audio, documenti, archivi/dischi/VM, app, codice e dati) con avanzamento circolare, contatori in tempo reale, pausa e interruzione. Nei risultati: categorie, ricerca, filtri per dimensione ed età, tabella ordinabile, miniature e anteprima Quick Look, spostamento multiplo nel Cestino.
 - **Mappa disco**: grafico sunburst interattivo (clic per entrare in una cartella, clic al centro per risalire), lista ordinata per dimensione, vista "file più grandi", barra del volume con spazio usato / eliminabile dal sistema / libero.
 - **Pulizia**: cache utente, log, cache delle app Electron/Chromium, Xcode DerivedData e DeviceSupport, cache dei package manager (npm, pip, uv, Gradle, Cargo…), `node_modules`, installer nei Download, backup iOS, Cestino.
 - **Pulizia dati IA**: cache e log di Claude, Claude Code, ChatGPT, Codex, Cursor, LM Studio; cronologia delle sessioni degli agenti; modelli locali scaricati (Ollama, LM Studio, Hugging Face, Whisper, PyTorch, VM di Claude). Ogni categoria ha un livello di rischio.
@@ -40,7 +42,15 @@ Per aprire il progetto in Xcode: `open Package.swift`.
 ```bash
 swift run MacSweep --report            # categorie di pulizia e file orfani
 swift run MacSweep --report "Slack"    # anche i file collegati a un'app
+swift run MacSweep --scan-types ~      # statistiche per tipo di file
 ```
+
+In sviluppo puoi aprire direttamente una sezione: `swift run MacSweep -page deepScan`
+(`overview`, `diskMap`, `deepScan`, `cleanup`, `apps`, `orphans`).
+
+### Icona
+
+L'icona è generata in codice: `swift scripts/make-icon.swift` produce `Resources/AppIcon.icns`.
 
 ## Permessi
 

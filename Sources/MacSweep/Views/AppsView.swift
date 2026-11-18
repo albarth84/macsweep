@@ -5,13 +5,24 @@ struct AppsView: View {
     @Bindable var model: AppsModel
 
     var body: some View {
-        HSplitView {
-            appList.frame(minWidth: 260, idealWidth: 300, maxWidth: 420)
-            detail.frame(minWidth: 460, maxWidth: .infinity)
-        }
-        .navigationTitle("Applicazioni")
-        .toolbar {
-            Button { model.load() } label: { Label("Aggiorna", systemImage: "arrow.clockwise") }
+        VStack(spacing: 0) {
+            PageHeader(
+                title: "Applicazioni",
+                subtitle: "Scegli un'app: MacSweep trova preferenze, cache, container e servizi collegati.",
+                symbol: SidebarItem.apps.symbol, colors: Theme.blue
+            ) {
+                Button { model.load() } label: { Label("Aggiorna", systemImage: "arrow.clockwise") }
+            }
+            HStack(spacing: 14) {
+                appList
+                    .frame(minWidth: 260, idealWidth: 300, maxWidth: 380)
+                    .card(padding: 0)
+                detail
+                    .frame(minWidth: 460, maxWidth: .infinity)
+                    .card(padding: 0)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
         }
         .onAppear { if model.apps.isEmpty { model.load() } }
         .sheet(isPresented: Binding(get: { model.lastResult != nil }, set: { if !$0 { model.lastResult = nil } })) {
@@ -26,9 +37,13 @@ struct AppsView: View {
 
     private var appList: some View {
         VStack(spacing: 0) {
-            TextField("Cerca app", text: $model.searchText)
-                .textFieldStyle(.roundedBorder)
-                .padding(8)
+            HStack {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Cerca app", text: $model.searchText).textFieldStyle(.plain)
+            }
+            .padding(8)
+            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+            .padding(10)
             List(model.filteredApps, selection: Binding(get: { model.selectedID }, set: { model.select($0) })) { app in
                 HStack(spacing: 10) {
                     Image(nsImage: NSWorkspace.shared.icon(forFile: app.url.path))
@@ -45,6 +60,7 @@ struct AppsView: View {
                 }
                 .tag(app.id)
             }
+            .scrollContentBackground(.hidden)
             .overlay { if model.isLoading { ProgressView() } }
             Divider()
             Text("\(model.apps.count) app installate").font(.caption).foregroundStyle(.secondary).padding(6)
@@ -56,9 +72,10 @@ struct AppsView: View {
         if let app = model.selectedApp {
             AppDetail(model: model, app: app)
         } else {
-            ContentUnavailableView(
-                "Seleziona un'app", systemImage: "app.dashed",
-                description: Text("MacSweep cercherà preferenze, cache, container, log e servizi di avvio collegati all'app."))
+            EmptyStateView(
+                symbol: "app.dashed", title: "Seleziona un'app",
+                message: "MacSweep cercherà preferenze, cache, container, log e servizi di avvio collegati all'app.",
+                colors: Theme.blue)
         }
     }
 }
@@ -89,6 +106,7 @@ private struct AppDetail: View {
                         LeftoverRow(item: $item)
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
             Divider()
             footer.padding()
@@ -106,9 +124,13 @@ private struct AppDetail: View {
     private var header: some View {
         HStack(spacing: 14) {
             Image(nsImage: NSWorkspace.shared.icon(forFile: app.url.path))
-                .resizable().frame(width: 56, height: 56)
+                .resizable().frame(width: 64, height: 64)
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
             VStack(alignment: .leading, spacing: 3) {
-                Text(app.name).font(.title2.bold())
+                HStack(spacing: 8) {
+                    Text(app.name).font(.title2.bold())
+                    if !app.version.isEmpty { Pill(text: app.version, color: .secondary) }
+                }
                 Text(app.bundleID).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 Text(app.url.path).font(.caption).foregroundStyle(.tertiary)
             }
@@ -122,12 +144,13 @@ private struct AppDetail: View {
             Button("Seleziona tutto") { model.setAll(true) }
             Button("Deseleziona") { model.setAll(false) }
             Spacer()
-            Text("\(model.leftovers.count) elementi trovati · selezionati \(Fmt.bytes(model.selectedTotal))")
-                .foregroundStyle(.secondary)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(Fmt.bytes(model.selectedTotal)).font(.system(.title3, design: .rounded).weight(.bold))
+                Text("\(model.leftovers.count) elementi trovati").font(.caption).foregroundStyle(.secondary)
+            }
             if model.isRemoving { ProgressView().controlSize(.small) }
-            Button("Rimuovi selezionati…") { confirming = true }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+            Button { confirming = true } label: { Label("Rimuovi", systemImage: "trash") }
+                .buttonStyle(.gradient(Theme.red))
                 .disabled(model.selectedTotal == 0 && model.leftovers.filter(\.selected).isEmpty || model.isRemoving)
         }
     }
@@ -138,15 +161,14 @@ private struct LeftoverRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Toggle("", isOn: $item.selected).labelsHidden()
+            Toggle("", isOn: $item.selected).labelsHidden().toggleStyle(.checkbox)
             Image(nsImage: NSWorkspace.shared.icon(forFile: item.url.path))
-                .resizable().frame(width: 20, height: 20)
+                .resizable().frame(width: 22, height: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.url.lastPathComponent).lineLimit(1).truncationMode(.middle)
                 HStack(spacing: 6) {
+                    Pill(text: item.reason.label, color: item.reason == .appBundle ? .blue : .secondary)
                     Text(item.location)
-                    Text("·")
-                    Text(item.reason.label)
                     if item.needsAdmin {
                         Label("admin", systemImage: "lock.fill").labelStyle(.titleAndIcon)
                     }

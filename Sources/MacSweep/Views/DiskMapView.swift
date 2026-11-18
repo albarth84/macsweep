@@ -9,13 +9,19 @@ struct DiskMapView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VolumeBar(volume: model.volume).padding()
-            Divider()
-            controls.padding(.horizontal).padding(.vertical, 8)
-            Divider()
+            PageHeader(
+                title: "Mappa disco",
+                subtitle: "Esplora le cartelle: ogni anello è un livello, l'ampiezza è lo spazio occupato.",
+                symbol: SidebarItem.diskMap.symbol, colors: Theme.teal
+            ) {
+                scanButtons
+            }
+            VolumeBar(volume: model.volume)
+                .card(padding: 14)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
             content
         }
-        .navigationTitle("Mappa disco")
         .confirmationDialog(
             "Spostare \"\(pendingTrash?.name ?? "")\" nel Cestino?",
             isPresented: Binding(get: { pendingTrash != nil }, set: { if !$0 { pendingTrash = nil } }),
@@ -35,47 +41,57 @@ struct DiskMapView: View {
         }
     }
 
-    private var controls: some View {
-        HStack(spacing: 10) {
-            Button {
-                model.scan(URL(fileURLWithPath: NSHomeDirectory()))
-            } label: { Label("Home", systemImage: "house") }
-
-            Button {
-                model.scan(URL(fileURLWithPath: "/"))
-            } label: { Label("Intero disco", systemImage: "internaldrive") }
-
-            Button {
-                chooseFolder()
-            } label: { Label("Scegli cartella…", systemImage: "folder.badge.plus") }
-
-            Spacer()
-
-            if model.isScanning {
-                ProgressView().controlSize(.small)
-                Text("\(model.scannedCount.formatted()) elementi").monospacedDigit().foregroundStyle(.secondary)
-                Button("Annulla") { model.cancelScan() }
-            } else if model.root != nil {
-                Picker("", selection: $mode) {
-                    Text("Mappa").tag(0)
-                    Text("File più grandi").tag(1)
+    private var scanButtons: some View {
+        HStack(spacing: 8) {
+            Menu {
+                Button { model.scan(URL(fileURLWithPath: NSHomeDirectory())) } label: {
+                    Label("Cartella Home", systemImage: "house")
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 230)
+                Button { model.scan(URL(fileURLWithPath: "/")) } label: {
+                    Label("Intero disco", systemImage: "internaldrive")
+                }
+                Divider()
+                Button { chooseFolder() } label: { Label("Scegli cartella…", systemImage: "folder") }
+            } label: {
+                Label("Analizza", systemImage: "play.fill")
             }
+            .menuStyle(.borderedButton)
+            .fixedSize()
+            .disabled(model.isScanning)
         }
-        .disabled(false)
     }
 
     @ViewBuilder
     private var content: some View {
-        if let current = model.current {
-            VStack(spacing: 0) {
-                Breadcrumb(node: current) { model.current = $0 }
-                    .padding(.horizontal).padding(.vertical, 6)
-                Divider()
+        if model.isScanning {
+            VStack(spacing: 16) {
+                ProgressView().controlSize(.large)
+                Text("Scansione di \(model.scanTarget?.path ?? "")").font(.headline)
+                Text("\(model.scannedCount.formatted()) elementi analizzati")
+                    .monospacedDigit().foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+                Button("Annulla") { model.cancelScan() }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let current = model.current {
+            VStack(spacing: 10) {
+                HStack {
+                    Button { model.goUp() } label: { Image(systemName: "chevron.left") }
+                        .disabled(current.parent == nil)
+                    Breadcrumb(node: current) { model.current = $0 }
+                    Spacer()
+                    Picker("", selection: $mode) {
+                        Text("Mappa").tag(0)
+                        Text("File più grandi").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 220)
+                }
+                .padding(.horizontal, 24)
+
                 if mode == 0 {
-                    HSplitView {
+                    HStack(spacing: 14) {
                         SunburstView(
                             root: current, revision: model.revision, hovered: $hovered,
                             onSelect: { node in
@@ -83,30 +99,46 @@ struct DiskMapView: View {
                             },
                             onBack: { model.goUp() }
                         )
-                        .padding()
-                        .frame(minWidth: 380)
+                        .padding(8)
+                        .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
+                        .card(padding: 10)
 
                         NodeList(nodes: current.children, total: current.size, revision: model.revision,
                                  hovered: $hovered,
                                  onOpen: { model.navigate(to: $0) },
                                  onTrash: { pendingTrash = $0 })
-                            .frame(minWidth: 320, idealWidth: 380)
+                            .frame(minWidth: 320, idealWidth: 400, maxWidth: 480)
+                            .card(padding: 0)
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
                 } else {
                     NodeList(nodes: current.largestFiles(limit: 200), total: current.size, revision: model.revision,
                              hovered: $hovered, showPath: true,
                              onOpen: { Finder.reveal($0.url) },
                              onTrash: { pendingTrash = $0 })
+                        .card(padding: 0)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
                 }
             }
         } else {
-            ContentUnavailableView {
-                Label(model.isScanning ? "Scansione in corso…" : "Nessuna scansione",
-                      systemImage: model.isScanning ? "hourglass" : "chart.pie")
-            } description: {
-                Text(model.isScanning
-                     ? (model.scanTarget?.path ?? "")
-                     : "Analizza la Home, l'intero disco o una cartella per vedere dove finisce lo spazio.")
+            VStack(spacing: 18) {
+                EmptyStateView(
+                    symbol: "chart.pie.fill", title: "Nessuna scansione",
+                    message: "Analizza la Home, l'intero disco o una cartella per vedere dove finisce lo spazio.",
+                    colors: Theme.teal)
+                    .frame(maxHeight: 220)
+                HStack(spacing: 10) {
+                    Button { model.scan(URL(fileURLWithPath: NSHomeDirectory())) } label: {
+                        Label("Analizza la Home", systemImage: "house.fill")
+                    }
+                    .buttonStyle(.gradient(Theme.teal))
+                    Button { model.scan(URL(fileURLWithPath: "/")) } label: {
+                        Label("Intero disco", systemImage: "internaldrive")
+                    }
+                    Button { chooseFolder() } label: { Label("Cartella…", systemImage: "folder") }
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -132,7 +164,10 @@ struct Breadcrumb: View {
                 ForEach(node.ancestry) { item in
                     Button(item.name) { onSelect(item) }
                         .buttonStyle(.plain)
-                        .foregroundStyle(item === node ? .primary : .secondary)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(item === node ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05),
+                                    in: Capsule())
+                        .foregroundStyle(item === node ? Color.accentColor : .primary)
                     if item !== node {
                         Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                     }
@@ -152,28 +187,33 @@ struct NodeList: View {
     var onTrash: (FileNode) -> Void
 
     var body: some View {
-        List(nodes) { node in
+        List(Array(nodes.enumerated()), id: \.element.id) { index, node in
             HStack(spacing: 10) {
                 Image(nsImage: icon(for: node))
-                    .resizable().frame(width: 20, height: 20)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(node.name).lineLimit(1).truncationMode(.middle)
+                    .resizable().frame(width: 22, height: 22)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(node.name).lineLimit(1).truncationMode(.middle)
+                        Spacer()
+                        Text(Fmt.bytes(node.size)).monospacedDigit().foregroundStyle(.secondary)
+                    }
                     if showPath {
                         Text(node.url.deletingLastPathComponent().path)
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
                     }
                     GeometryReader { geo in
-                        Capsule().fill(.tint.opacity(0.7))
-                            .frame(width: geo.size.width * fraction(node))
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.06))
+                            Capsule().fill(color(for: node, index: index))
+                                .frame(width: max(3, geo.size.width * fraction(node)))
+                        }
                     }
-                    .frame(height: 4)
+                    .frame(height: 5)
                 }
-                Spacer()
-                Text(Fmt.bytes(node.size)).monospacedDigit().foregroundStyle(.secondary)
             }
-            .padding(.vertical, 2)
+            .padding(.vertical, 3)
             .contentShape(Rectangle())
-            .background(node === hovered ? Color.accentColor.opacity(0.12) : .clear)
+            .listRowBackground(node === hovered ? Color.accentColor.opacity(0.12) : Color.clear)
             .onTapGesture(count: 2) { onOpen(node) }
             .contextMenu {
                 if node.canNavigate { Button("Apri") { onOpen(node) } }
@@ -184,7 +224,13 @@ struct NodeList: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
         .id(revision)
+    }
+
+    private func color(for node: FileNode, index: Int) -> Color {
+        if node.isAggregate { return .gray.opacity(0.5) }
+        return showPath ? .accentColor : Color(Theme.chart[index % Theme.chart.count])
     }
 
     private func fraction(_ node: FileNode) -> Double {
@@ -201,38 +247,23 @@ struct VolumeBar: View {
     let volume: VolumeInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
+                Image(systemName: "internaldrive.fill").foregroundStyle(.secondary)
                 Text("Macintosh HD").font(.headline)
                 Spacer()
                 Text("\(Fmt.bytes(volume.availableImportant)) disponibili su \(Fmt.bytes(volume.total))")
                     .foregroundStyle(.secondary)
             }
-            GeometryReader { geo in
-                let total = max(1, Double(volume.total))
-                HStack(spacing: 0) {
-                    Rectangle().fill(Color.accentColor)
-                        .frame(width: geo.size.width * Double(volume.used) / total)
-                    Rectangle().fill(Color.orange.opacity(0.7))
-                        .frame(width: geo.size.width * Double(volume.purgeable) / total)
-                    Rectangle().fill(Color.secondary.opacity(0.2))
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 5))
+            SegmentBar(segments: [
+                .init(value: Double(volume.used), color: .accentColor),
+                .init(value: Double(volume.purgeable), color: .orange.opacity(0.8)),
+            ], total: Double(max(1, volume.total)), height: 12)
+            HStack(spacing: 18) {
+                LegendDot(color: .accentColor, title: "Usato", value: Fmt.bytes(volume.used))
+                LegendDot(color: .orange.opacity(0.8), title: "Eliminabile dal sistema", value: Fmt.bytes(volume.purgeable))
+                LegendDot(color: .secondary.opacity(0.3), title: "Libero", value: Fmt.bytes(volume.available))
             }
-            .frame(height: 14)
-            HStack(spacing: 16) {
-                legend(.accentColor, "Usato", volume.used)
-                legend(.orange.opacity(0.7), "Eliminabile dal sistema", volume.purgeable)
-                legend(.secondary.opacity(0.3), "Libero", volume.available)
-            }
-            .font(.caption)
-        }
-    }
-
-    private func legend(_ color: Color, _ title: String, _ value: Int64) -> some View {
-        HStack(spacing: 4) {
-            Circle().fill(color).frame(width: 8, height: 8)
-            Text("\(title): \(Fmt.bytes(value))").foregroundStyle(.secondary)
         }
     }
 }

@@ -7,31 +7,27 @@ struct OrphansView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Dati di app non più installate").font(.headline)
-                    Text("Preferenze, cache, container e servizi di avvio rimasti dopo la disinstallazione.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Picker("Confidenza minima", selection: $model.minimumConfidence) {
+            PageHeader(
+                title: "File orfani",
+                subtitle: "Preferenze, cache, container e servizi di avvio rimasti dopo la disinstallazione.",
+                symbol: SidebarItem.orphans.symbol, colors: Theme.orange
+            ) {
+                Picker("Confidenza", selection: $model.minimumConfidence) {
                     Text("Alta").tag(OrphanConfidence.high)
                     Text("Media").tag(OrphanConfidence.medium)
                     Text("Tutte").tag(OrphanConfidence.low)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 260)
+                Button { model.scan() } label: { Label("Cerca di nuovo", systemImage: "arrow.clockwise") }
+                    .disabled(model.isScanning)
             }
-            .padding()
-            Divider()
             content
+                .card(padding: 0)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
             Divider()
-            footer.padding()
-        }
-        .navigationTitle("File orfani")
-        .toolbar {
-            Button { model.scan() } label: { Label("Cerca", systemImage: "magnifyingglass") }
-                .disabled(model.isScanning)
+            footer.padding(.horizontal, 24).padding(.vertical, 14)
         }
         .onAppear { if !model.hasScanned && !model.isScanning { model.scan() } }
         .confirmationDialog(
@@ -57,16 +53,17 @@ struct OrphansView: View {
         if model.isScanning {
             ProgressView("Analisi delle cartelle Library…").frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.visibleIndices.isEmpty {
-            ContentUnavailableView(
-                "Nessun file orfano", systemImage: "checkmark.seal",
-                description: Text(model.hasScanned ? "Non c'è niente da pulire con questo livello di confidenza." : ""))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            EmptyStateView(
+                symbol: "checkmark.seal.fill", title: "Nessun file orfano",
+                message: model.hasScanned ? "Non c'è niente da pulire con questo livello di confidenza." : "",
+                colors: Theme.green)
         } else {
             List {
                 ForEach(model.visibleIndices, id: \.self) { index in
                     OrphanRow(item: $model.items[index])
                 }
             }
+            .scrollContentBackground(.hidden)
         }
     }
 
@@ -75,11 +72,13 @@ struct OrphansView: View {
             Button("Seleziona tutto") { model.setAllVisible(true) }
             Button("Deseleziona") { model.setAllVisible(false) }
             Spacer()
-            Text("Selezionati: \(Fmt.bytes(model.selectedTotal))").foregroundStyle(.secondary)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(Fmt.bytes(model.selectedTotal)).font(.system(.title3, design: .rounded).weight(.bold))
+                Text("\(model.selectedItems.count) selezionati").font(.caption).foregroundStyle(.secondary)
+            }
             if model.isRemoving { ProgressView().controlSize(.small) }
-            Button("Rimuovi selezionati…") { confirming = true }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+            Button { confirming = true } label: { Label("Rimuovi", systemImage: "trash") }
+                .buttonStyle(.gradient(Theme.orange))
                 .disabled(model.selectedItems.isEmpty || model.isRemoving)
         }
     }
@@ -90,7 +89,7 @@ private struct OrphanRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Toggle("", isOn: $item.selected).labelsHidden()
+            Toggle("", isOn: $item.selected).labelsHidden().toggleStyle(.checkbox)
             Image(nsImage: NSWorkspace.shared.icon(forFile: item.url.path))
                 .resizable().frame(width: 20, height: 20)
             VStack(alignment: .leading, spacing: 2) {
