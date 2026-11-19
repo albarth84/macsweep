@@ -15,10 +15,10 @@ struct AppsView: View {
             }
             HStack(spacing: 14) {
                 appList
-                    .frame(minWidth: 320, idealWidth: 360, maxWidth: 440)
+                    .frame(minWidth: 280, idealWidth: 360, maxWidth: 440)
                     .card(padding: 0)
                 detail
-                    .frame(minWidth: 460, maxWidth: .infinity)
+                    .frame(minWidth: 300, maxWidth: .infinity)
                     .card(padding: 0)
             }
             .padding(.horizontal, 24)
