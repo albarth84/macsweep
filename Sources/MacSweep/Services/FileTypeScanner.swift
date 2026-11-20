@@ -13,10 +13,11 @@ final class FileTypeScanner: @unchecked Sendable {
     private var found: [FoundFile] = []
     private var cancelled = false
     private var paused = false
+    private let hardLinks = HardLinkTracker()
 
     private static let keys: [URLResourceKey] = [
         .isDirectoryKey, .isPackageKey, .isSymbolicLinkKey, .isVolumeKey,
-        .totalFileAllocatedSizeKey, .fileAllocatedSizeKey, .contentModificationDateKey,
+        .totalFileAllocatedSizeKey, .fileAllocatedSizeKey, .contentModificationDateKey, .linkCountKey,
     ]
     private static let keySet = Set(keys)
 
@@ -59,11 +60,11 @@ final class FileTypeScanner: @unchecked Sendable {
             if v.isDirectory == true {
                 if Self.skippedPaths.contains(entry.path) || (v.isVolume == true && entry.path != rootPath) { continue }
                 if v.isPackage == true {
-                    accumulator.record(entry, size: FileSize.allocated(entry), modified: v.contentModificationDate)
+                    accumulator.record(entry, size: FileSize.allocated(entry, tracker: hardLinks), modified: v.contentModificationDate)
                 } else {
                     subdirs.append(entry)
                 }
-            } else {
+            } else if hardLinks.shouldCount(entry, linkCount: v.linkCount) {
                 accumulator.record(entry, size: Self.size(v), modified: v.contentModificationDate)
             }
         }
@@ -94,8 +95,8 @@ final class FileTypeScanner: @unchecked Sendable {
                     continue
                 }
                 guard v.isPackage == true else { continue }
-                accumulator.record(url, size: FileSize.allocated(url), modified: v.contentModificationDate)
-            } else {
+                accumulator.record(url, size: FileSize.allocated(url, tracker: hardLinks), modified: v.contentModificationDate)
+            } else if hardLinks.shouldCount(url, linkCount: v.linkCount) {
                 accumulator.record(url, size: Self.size(v), modified: v.contentModificationDate)
             }
         }

@@ -9,9 +9,11 @@ final class DiskScanner: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0
     private var cancelled = false
+    private let hardLinks = HardLinkTracker()
 
     private let keys: [URLResourceKey] = [
         .isDirectoryKey, .isSymbolicLinkKey, .isVolumeKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey,
+        .linkCountKey,
     ]
 
     /// Percorsi da non attraversare: volumi montati, firmlink duplicati, swap.
@@ -46,6 +48,7 @@ final class DiskScanner: @unchecked Sendable {
                 if v.isVolume == true { continue } // non attraversare altri volumi
                 directories.append(entry)
             } else {
+                guard hardLinks.shouldCount(entry, linkCount: v.linkCount) else { continue }
                 let size = Int64(v.totalFileAllocatedSize ?? v.fileAllocatedSize ?? 0)
                 if size >= Self.smallFileThreshold {
                     let file = FileNode(url: entry, isDirectory: false, size: size)

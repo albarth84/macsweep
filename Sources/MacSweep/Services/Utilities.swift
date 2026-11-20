@@ -12,16 +12,39 @@ extension String {
     var expandingTilde: String { (self as NSString).expandingTildeInPath }
 }
 
+/// Conta una sola volta i file con più hard link, come fa `du`: lo stesso contenuto
+/// raggiungibile da più percorsi occupa spazio su disco una volta sola.
+final class HardLinkTracker: @unchecked Sendable {
+    private struct FileID: Hashable {
+        let device: Int32
+        let inode: UInt64
+    }
+
+    private let lock = NSLock()
+    private var seen = Set<FileID>()
+
+    /// `true` se il file va conteggiato: ha un solo link oppure è la prima volta che lo si incontra.
+    func shouldCount(_ url: URL, linkCount: Int?) -> Bool {
+        guard let linkCount, linkCount > 1 else { return true }
+        var info = stat()
+        guard lstat(url.path, &info) == 0 else { return true }
+        let id = FileID(device: info.st_dev, inode: info.st_ino)
+        return lock.withLock { seen.insert(id).inserted }
+    }
+}
+
 enum FileSize {
     private static let keys: [URLResourceKey] = [
-        .isDirectoryKey, .isSymbolicLinkKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey,
+        .isDirectoryKey, .isSymbolicLinkKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey, .linkCountKey,
     ]
 
     /// Spazio occupato su disco (allocato) da un file o da una cartella, ricorsivamente.
-    static func allocated(_ url: URL) -> Int64 {
+    /// I file con più hard link sono conteggiati una sola volta per `tracker`.
+    static func allocated(_ url: URL, tracker: HardLinkTracker = HardLinkTracker()) -> Int64 {
         guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return 0 }
         if values.isSymbolicLink == true { return 0 }
         if values.isDirectory != true {
+            guard tracker.shouldCount(url, linkCount: values.linkCount) else { return 0 }
             return Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? 0)
         }
         var total: Int64 = 0
@@ -29,7 +52,8 @@ enum FileSize {
             at: url, includingPropertiesForKeys: keys, options: [], errorHandler: { _, _ in true })
         while let item = enumerator?.nextObject() as? URL {
             guard let v = try? item.resourceValues(forKeys: Set(keys)),
-                  v.isDirectory != true, v.isSymbolicLink != true else { continue }
+                  v.isDirectory != true, v.isSymbolicLink != true,
+                  tracker.shouldCount(item, linkCount: v.linkCount) else { continue }
             total += Int64(v.totalFileAllocatedSize ?? v.fileAllocatedSize ?? 0)
         }
         return total
