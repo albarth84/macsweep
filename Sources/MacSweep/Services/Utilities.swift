@@ -7,6 +7,16 @@ enum Fmt {
     }
 }
 
+extension URL {
+    /// Alcune versioni di macOS restituiscono percorsi con il prefisso `/.nofollow` (alias del
+    /// volume dati) enumerando dalla radice: lo togliamo per mostrare il percorso reale.
+    var withoutNoFollowPrefix: URL {
+        let path = self.path
+        guard path.hasPrefix("/.nofollow/") else { return self }
+        return URL(fileURLWithPath: String(path.dropFirst("/.nofollow".count)), isDirectory: hasDirectoryPath)
+    }
+}
+
 extension String {
     /// Espande `~` nella home dell'utente.
     var expandingTilde: String { (self as NSString).expandingTildeInPath }

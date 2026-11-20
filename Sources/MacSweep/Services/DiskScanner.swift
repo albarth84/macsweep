@@ -18,7 +18,7 @@ final class DiskScanner: @unchecked Sendable {
 
     /// Percorsi da non attraversare: volumi montati, firmlink duplicati, swap.
     private let skippedPaths: Set<String> = [
-        "/System/Volumes", "/Volumes", "/dev", "/private/var/vm", "/net", "/home", "/cores",
+        "/System/Volumes", "/Volumes", "/dev", "/private/var/vm", "/net", "/home", "/cores", "/.nofollow",
     ]
 
     var scannedCount: Int { lock.withLock { count } }
@@ -34,7 +34,7 @@ final class DiskScanner: @unchecked Sendable {
         guard !isCancelled else { return node }
 
         let entries = (try? FileManager.default.contentsOfDirectory(
-            at: url, includingPropertiesForKeys: keys, options: [])) ?? []
+            at: url, includingPropertiesForKeys: keys, options: []))?.map(\.withoutNoFollowPrefix) ?? []
 
         var directories: [URL] = []
         var smallTotal: Int64 = 0

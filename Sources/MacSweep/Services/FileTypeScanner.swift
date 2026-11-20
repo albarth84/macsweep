@@ -23,7 +23,7 @@ final class FileTypeScanner: @unchecked Sendable {
 
     /// Percorsi esclusi: volume di sistema sigillato, altri volumi, swap.
     private static let skippedPaths: Set<String> = [
-        "/System", "/Volumes", "/dev", "/private/var/vm", "/net", "/home", "/cores", "/System/Volumes",
+        "/System", "/Volumes", "/dev", "/private/var/vm", "/net", "/home", "/cores", "/System/Volumes", "/.nofollow",
     ]
 
     init(minimumSize: Int64) {
@@ -52,7 +52,7 @@ final class FileTypeScanner: @unchecked Sendable {
             return
         }
         let entries = (try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: Self.keys, options: [])) ?? []
+            at: dir, includingPropertiesForKeys: Self.keys, options: []))?.map(\.withoutNoFollowPrefix) ?? []
         let accumulator = Accumulator(scanner: self)
         var subdirs: [URL] = []
         for entry in entries {
@@ -82,7 +82,8 @@ final class FileTypeScanner: @unchecked Sendable {
 
         let accumulator = Accumulator(scanner: self)
         var visited = 0
-        while let url = enumerator.nextObject() as? URL {
+        while let next = enumerator.nextObject() as? URL {
+            let url = next.withoutNoFollowPrefix
             visited += 1
             if visited % 256 == 0 {
                 waitWhilePaused()
