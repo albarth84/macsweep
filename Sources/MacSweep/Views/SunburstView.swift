@@ -171,8 +171,10 @@ struct SunburstView: View {
             let r0 = inner + ring * Double(s.depth) + Self.gap
             let r1 = inner + ring * Double(s.depth + 1) - Self.gap
             // Il distacco angolare è costante in punti: più stretto sugli anelli esterni.
-            let start0 = s.start + Self.gap / r0, end0 = s.end - Self.gap / r0
-            let start1 = s.start + Self.gap / r1, end1 = s.end - Self.gap / r1
+            // Un arco che occupa tutto il giro non ha vicini: niente distacco (eviterebbe una riga a ore 12).
+            let pad = s.end - s.start >= 2 * .pi - 1e-6 ? 0.0 : Self.gap
+            let start0 = s.start + pad / r0, end0 = s.end - pad / r0
+            let start1 = s.start + pad / r1, end1 = s.end - pad / r1
             guard end0 > start0, end1 > start1 else { return nil }
             let steps = max(2, Int((s.end - s.start) / 0.02))
             var path = Path()
