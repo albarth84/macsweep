@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case overview, diskMap, deepScan, cleanup, apps, orphans
+    case overview, diskMap, systemData, deepScan, cleanup, apps, orphans
 
     var id: String { rawValue }
 
@@ -9,6 +9,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .overview: "Panoramica"
         case .diskMap: "Mappa disco"
+        case .systemData: "Dati di sistema"
         case .deepScan: "Scansione file"
         case .cleanup: "Pulizia"
         case .apps: "Applicazioni"
@@ -20,6 +21,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .overview: "Stato del disco"
         case .diskMap: "Dove finisce lo spazio, cartella per cartella"
+        case .systemData: "Cosa c'è nella voce di Impostazioni"
         case .deepScan: "Analisi per tipo di file di un'unità"
         case .cleanup: "Cache, log, dati IA, sviluppo, WhatsApp"
         case .apps: "Disinstalla app e tutti i loro file"
@@ -31,6 +33,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .overview: "gauge.with.dots.needle.67percent"
         case .diskMap: "chart.pie.fill"
+        case .systemData: "gearshape.2.fill"
         case .deepScan: "magnifyingglass"
         case .cleanup: "sparkles"
         case .apps: "square.grid.2x2.fill"
@@ -42,6 +45,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .overview: Theme.brand
         case .diskMap: Theme.teal
+        case .systemData: [Color(hex: 0x64748B), Color(hex: 0x6366F1)]
         case .deepScan: Theme.green
         case .cleanup: Theme.pink
         case .apps: Theme.blue
@@ -59,6 +63,7 @@ struct ContentView: View {
     @State private var cleanupModel = CleanupModel()
     @State private var appsModel = AppsModel()
     @State private var orphansModel = OrphansModel()
+    @State private var systemDataModel = SystemDataModel()
     @State private var whatsAppModel = WhatsAppModel()
     @State private var hasFullDiskAccess = Permissions.hasFullDiskAccess()
     /// L'utente ha scelto di continuare senza Accesso completo al disco (solo per questa sessione).
@@ -117,6 +122,11 @@ struct ContentView: View {
                     OverviewView(volume: diskModel.volume, cleanup: cleanupModel, orphans: orphansModel,
                                  apps: appsModel, selection: $selection)
                 case .diskMap: DiskMapView(model: diskModel)
+                case .systemData:
+                    SystemDataView(model: systemDataModel) { url in
+                        diskModel.scan(url)
+                        selection = .diskMap
+                    }
                 case .deepScan: DeepScanView(model: deepScanModel)
                 case .cleanup: CleanupView(model: cleanupModel, whatsApp: whatsAppModel)
                 case .apps: AppsView(model: appsModel)

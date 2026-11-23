@@ -7,6 +7,7 @@ App nativa macOS (SwiftUI) per capire **dove finisce lo spazio sul disco** e far
 - **Panoramica**: anello di occupazione del disco, spazio recuperabile in sicurezza e accesso rapido agli strumenti.
 - **Scansione file**: scegli un'unità (interna o esterna) o una cartella; MacSweep classifica ogni file per tipo (immagini, video, audio, documenti, archivi/dischi/VM, app, codice e dati) con avanzamento circolare, contatori in tempo reale, pausa e interruzione. Nei risultati: categorie, ricerca, filtri per dimensione ed età, tabella ordinabile, miniature e anteprima Quick Look, spostamento multiplo nel Cestino.
 - **Mappa disco**: grafico sunburst interattivo (clic per entrare in una cartella, clic al centro per risalire), lista ordinata per dimensione, vista "file più grandi", barra del volume con spazio usato / eliminabile dal sistema / libero.
+- **Dati di sistema**: scompone la voce "Dati di sistema" di Impostazioni (supporto applicazioni, container, Spotlight e Apple Intelligence, swap, Preboot, Recovery, file temporanei, Homebrew…). Ogni voce è etichettata come "si può pulire", "dati delle app" o "gestito dal sistema", con spiegazione, apertura nel Finder o nella Mappa disco, Cestino per le voci sicure e gestione degli snapshot locali di Time Machine.
 - **Pulizia**: cache utente, log, cache delle app Electron/Chromium, Xcode DerivedData e DeviceSupport, cache dei package manager (npm, pip, uv, Gradle, Cargo…), `node_modules`, installer nei Download, backup iOS, Cestino.
 - **Pulizia dati IA**: cache e log di Claude, Claude Code, ChatGPT, Codex, Cursor, LM Studio; cronologia delle sessioni degli agenti; modelli locali scaricati (Ollama, LM Studio, Hugging Face, Whisper, PyTorch, VM di Claude). Ogni categoria ha un livello di rischio.
 - **Pulizia › WhatsApp**: cache degli Stati e media delle chat divisi per chat e per tipo (foto, video, vocali, documenti, sticker, miniature), con selezione granulare. MacSweep confronta i file con l'archivio delle chat (copia temporanea, sola lettura, solo nomi delle chat e percorsi dei media) e distingue i media ancora usati dai messaggi da quelli che nessun messaggio usa più. In modalità "Solo media non usati" le chat restano intatte.
@@ -45,6 +46,7 @@ swift run MacSweep --report            # categorie di pulizia e file orfani
 swift run MacSweep --report "Slack"    # anche i file collegati a un'app
 swift run MacSweep --scan-types ~      # statistiche per tipo di file
 swift run MacSweep --whatsapp          # media di WhatsApp per chat
+swift run MacSweep --system-data       # scomposizione dei "Dati di sistema"
 ```
 
 In sviluppo puoi aprire direttamente una sezione: `swift run MacSweep -page deepScan`

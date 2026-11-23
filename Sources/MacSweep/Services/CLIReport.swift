@@ -9,6 +9,7 @@ enum CLIReport {
         }
         if args.contains("--whatsapp") { whatsApp() }
         if args.contains("--check-fda") { checkFullDiskAccess() }
+        if args.contains("--system-data") { systemData() }
         guard let flag = args.firstIndex(of: "--report") else { return }
         let appQuery = args.count > flag + 1 ? args[flag + 1] : nil
 
@@ -95,6 +96,24 @@ enum CLIReport {
         for file in scanner.results().sorted(by: { $0.size > $1.size }).prefix(5) {
             print("  \(Fmt.bytes(file.size))\t\(file.category.title)\t\(file.url.path)")
         }
+        exit(0)
+    }
+
+    /// `--system-data`: scomposizione della voce "Dati di sistema" (sola lettura).
+    private static func systemData() {
+        let items = SystemDataScanner.scan()
+        let total = items.reduce(Int64(0)) { $0 + $1.size }
+        print("Dati di sistema: \(Fmt.bytes(total))")
+        for item in items {
+            print(String(format: "%10@  [%@]  %@", Fmt.bytes(item.size) as NSString,
+                         item.kind.label as NSString, item.title as NSString))
+            for child in item.children.prefix(4) {
+                print(String(format: "      %10@  [%@]%@  %@", Fmt.bytes(child.size) as NSString,
+                             child.kind.label as NSString, child.isHighlight ? " *" : "",
+                             child.title as NSString))
+            }
+        }
+        print("Snapshot locali: \(SystemDataScanner.localSnapshots().count)")
         exit(0)
     }
 }
