@@ -79,4 +79,5 @@ jobs:
             exit 0
           fi
           gh release create "$GITHUB_REF_NAME" build/*.zip build/*.dmg build/SHA256SUMS.txt \
-            --title "MacSweep ${{ steps.version.outputs.version }}" --generate-notes
+            --title "MacSweep ${{ steps.version.outputs.version }}" \
+            --notes-file "release-notes/${{ steps.version.outputs.version }}.md"

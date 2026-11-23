@@ -87,6 +87,9 @@ avviene al massimo una volta al giorno e si può disattivare.
 Numerazione: si parte da `0.1.0` e si incrementa l'ultima cifra (`0.1.1`, `0.1.2`…) finché non arriva un
 aggiornamento importante. La versione corrente è nel file `VERSION`.
 
+Prima scrivi le note in italiano in `release-notes/0.1.1.md` (breve elenco puntato di cosa cambia per
+l'utente): sono il testo mostrato in Impostazioni › Aggiornamenti e lo script si ferma se mancano.
+
 ```bash
 scripts/release.sh 0.1.1
 ```

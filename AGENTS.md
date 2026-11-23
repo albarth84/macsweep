@@ -12,6 +12,8 @@ Progetto: MacSweep, app SwiftUI per macOS (Swift Package, nessun progetto Xcode)
 Le app installate si aggiornano da Impostazioni › Aggiornamenti leggendo le GitHub Releases.
 
 1. Committa le modifiche (messaggi in stile `feat: …`, `fix: …`).
+   Scrivi anche le note di rilascio **in italiano** in `release-notes/X.Y.Z.md`: breve elenco
+   puntato rivolto all'utente (cosa cambia, non come). Senza note lo script si ferma.
 2. Esegui **`scripts/release.sh X.Y.Z --local`**: aggiorna `VERSION`, crea commit e tag,
    fa il push, compila, firma e pubblica la release.
 3. Se qualcosa si interrompe, rilancia lo stesso comando: riprende da dove si era fermato.

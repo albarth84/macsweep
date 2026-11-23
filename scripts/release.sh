@@ -2,6 +2,9 @@
 # Pubblica una nuova versione: aggiorna VERSION, crea il commit e il tag, fa il push.
 #
 # Uso: scripts/release.sh 0.1.5 [--local]
+#
+# Prima di rilasciare scrivi le note in italiano in release-notes/X.Y.Z.md (elenco puntato,
+# per l'utente: cosa cambia, non come). Compaiono in Impostazioni › Aggiornamenti.
 #   --local  compila, firma e pubblica la release da questo Mac (consigliato: i runner macOS
 #            di GitHub restano spesso in coda); la CI poi salta la pubblicazione.
 #
@@ -37,6 +40,12 @@ git remote set-url origin "https://$OWNER@github.com/$REPO.git"
 
 if [[ $LOCAL == 1 ]] && ! security find-identity -p codesigning 2>/dev/null | grep -q "\"$IDENTITY\""; then
     echo "Manca il certificato \"$IDENTITY\" nel portachiavi: vedi README › Firma." >&2
+    exit 1
+fi
+
+NOTES="release-notes/$NEW.md"
+if [[ ! -s "$NOTES" ]]; then
+    echo "Mancano le note di rilascio: scrivi in italiano $NOTES (elenco puntato) e committalo." >&2
     exit 1
 fi
 
@@ -77,6 +86,6 @@ fi
 # 4. Build firmata e pubblicazione.
 REQUIRE_SIGNING=1 VERSION="$NEW" scripts/build-app.sh --zip --dmg
 (cd build && shasum -a 256 "MacSweep-$NEW.zip" "MacSweep-$NEW.dmg" > SHA256SUMS.txt)
-gh release create "v$NEW" -R "$REPO" --verify-tag --title "MacSweep $NEW" --generate-notes \
+gh release create "v$NEW" -R "$REPO" --verify-tag --title "MacSweep $NEW" --notes-file "$NOTES" \
     "build/MacSweep-$NEW.zip" "build/MacSweep-$NEW.dmg" build/SHA256SUMS.txt
 echo "✓ Release v$NEW pubblicata: le app installate la riceveranno da Impostazioni › Aggiornamenti."
